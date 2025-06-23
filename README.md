@@ -45,7 +45,9 @@ The easiest way to host it for free is using **GitHub Pages**:
     
 6.  Under "Branch," select your main branch (usually main or master) and click **Save**.
     
-7.  GitHub will provide you with a public URL where your app is now live (e.g., https://your-username.github.io/japanese-vocab-builder/).
+7.  GitHub will provide you with a public URL where your app is now live (e.g., [https://your-username.github.io/japanese-vocab-builder/](https://ars-codelab.github.io/scan-my-vocab/)).
+
+8. You could further shorten this URL using an URL shortener service like bit.ly (e.g. [https://bit.ly/scan-vocab]bit.ly/scan-vocab)  
     
 
 Usage Guide
@@ -96,3 +98,8 @@ Technology Stack
 *   **Vanilla JavaScript** for all application logic.
     
 *   **Google AI (Gemini)** for the OCR and vocabulary extraction.
+
+
+Filing Issues / Bugs
+-------------------
+If you find any bugs with the app, please provide relevant details via an Issue [https://github.com/ars-codelab/scan-my-vocab/issues]. I will usually respond within 2-3 days. Thanks!
