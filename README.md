@@ -1,5 +1,5 @@
-Japanese Vocab Builder
-======================
+Scan My Vocab Builder
+======================================
 
 A simple, powerful web application to scan vocabulary from physical textbooks using your phone's camera and create interactive flashcard decks for studying.
 
@@ -11,7 +11,7 @@ Learning a new language like Japanese often involves working with physical textb
 The Solution
 ------------
 
-**Japanese Vocab Builder** bridges the gap between your physical textbook and modern digital study methods. It allows you to:
+**Scan My Vocab Builder** bridges the gap between your physical textbook and modern digital study methods. It allows you to:
 
 *   **Scan Pages:** Use your phone's camera or upload an image of a textbook page. The app uses Google's powerful AI to automatically perform Optical Character Recognition (OCR) and extract the vocabulary.
     
@@ -36,14 +36,16 @@ The easiest way to host it for free is using **GitHub Pages**:
 1.  Create a new public repository on GitHub (e.g., japanese-vocab-builder).
     
 2.  Upload the index.html file from this project to the repository.
+
+3.  This App was built primary for Japanese to English Learning, but it can be changed easily to any language by editing the LLM prompt in the code 
     
-3.  Go to your repository's **Settings** tab.
+4.  Go to your repository's **Settings** tab.
     
-4.  In the left sidebar, click on **Pages**.
+5.  In the left sidebar, click on **Pages**.
     
-5.  Under "Branch," select your main branch (usually main or master) and click **Save**.
+6.  Under "Branch," select your main branch (usually main or master) and click **Save**.
     
-6.  GitHub will provide you with a public URL where your app is now live (e.g., https://your-username.github.io/japanese-vocab-builder/).
+7.  GitHub will provide you with a public URL where your app is now live (e.g., https://your-username.github.io/japanese-vocab-builder/).
     
 
 Usage Guide
