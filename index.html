@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Scan My Vocab Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6366f1; /* Indigo 500 */
+            --primary-hover: #4f46e5; /* Indigo 600 */
+            --danger-color: #ec4899; /* Pink 500 */
+            --danger-hover: #db2777; /* Pink 600 */
+            --bg-start: #f9fafb; /* Gray 50 */
+            --bg-end: #f3f4f6; /* Gray 100 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-start);
+            background-image: linear-gradient(to bottom right, var(--bg-start), var(--bg-end));
+            color: #1f2937;
+        }
+        .noto-sans-jp { font-family: 'Noto Sans JP', sans-serif; }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card {
+            background-color: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.3s ease;
+        }
+        .card:hover { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; transition: all 0.2s ease; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        .btn-danger:hover { background-color: var(--danger-hover); }
+        .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
+        .btn-icon { padding: 0.5rem; }
+        .loader { border: 4px solid #e5e7eb; border-radius: 50%; border-top: 4px solid var(--primary-color); width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { background: white; padding: 2rem; border-radius: 16px; max-width: 95vw; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.3s; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        /* Flashcard styles */
+        .flashcard-container { perspective: 1000px; }
+        .flashcard { width: 100%; height: 200px; position: relative; transform-style: preserve-3d; transition: transform 0.6s; }
+        .flashcard.is-flipped { transform: rotateY(180deg); }
+        .flashcard-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1rem; }
+        .flashcard-front { background-color: #fff; border: 1px solid #e5e7eb; }
+        .flashcard-back { background-color: #f0f0ff; transform: rotateY(180deg); }
+        /* Instructions */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::after { content: '+'; float: right; font-size: 1.5rem; line-height: 1; font-weight: 300; transition: transform 0.2s; }
+        details[open] > summary::after { transform: rotate(45deg); }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="max-w-5xl mx-auto p-4 md:p-6">
+        <header class="flex justify-between items-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 cursor-pointer" id="home-button">
+                <span class="noto-sans-jp text-indigo-500">日本語</span> Vocab Builder
+            </h1>
+            <button id="settings-btn" class="btn btn-secondary btn-icon" title="Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+
+        <!-- Home View (Dashboard) -->
+        <div id="home-view" class="view space-y-8">
+            <div class="card p-6">
+                <div class="grid md:grid-cols-2 gap-6 items-center">
+                    <div class="text-center md:text-left">
+                         <h2 class="text-2xl font-bold mb-2">Start Learning</h2>
+                         <p class="text-gray-600 mb-4 md:mb-0">Add new words or start a quiz from your saved decks.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-end">
+                        <button id="go-to-scan-btn" class="btn btn-primary text-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            Add New Words
+                        </button>
+                    </div>
+                </div>
+            </div>
+             <div class="card p-6">
+                <h2 class="text-2xl font-bold mb-4">Manage Decks</h2>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="import-decks-btn" class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Import Decks
+                    </button>
+                    <input type="file" id="import-file-input" class="hidden" accept=".json">
+                    <button id="export-decks-btn" class="btn btn-secondary">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                         Export All Decks
+                    </button>
+                </div>
+            </div>
+            <div id="study-decks-container">
+                 <h2 class="text-2xl font-bold mb-4 text-gray-700">My Study Decks</h2>
+                 <div id="study-decks-list" class="space-y-4">
+                     <!-- Decks will be rendered here -->
+                 </div>
+            </div>
+             <div class="card p-6">
+                <details>
+                    <summary class="font-semibold text-lg cursor-pointer text-gray-700">How to Use This App</summary>
+                    <div class="mt-4 space-y-3 text-gray-600 border-t pt-4">
+                        <p><strong>1. API Key:</strong> First, click the gear icon in the top right to add your Google AI API key. This is required for scanning words.</p>
+                        <p><strong>2. Scan Words:</strong> Click "Add New Words". Use your phone's camera to take a picture of a vocabulary page, or upload an image file. You can add multiple pages at once.</p>
+                        <p><strong>3. Review & Correct:</strong> After scanning, the app will show you the extracted words. All words are checked by default. You can uncheck words you don't want, fix any mistakes in the text, or add words the scanner missed.</p>
+                        <p><strong>4. Organize:</strong> Add the selected words to a deck. You can create new "Books" (like 'Genki I') and "Chapters" (like 'Chapter 1') to keep your vocabulary organized.</p>
+                        <p><strong>5. Study:</strong> On the home screen, you can edit chapters or start a quiz on any chapter or entire book. The quiz uses interactive flashcards.</p>
+                         <p><strong>6. Import/Export:</strong> Use the "Export All Decks" button to save a JSON backup of your words. You can use the "Import Decks" button to load a backup file, merging it with your current decks.</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Scan View -->
+        <div id="scan-view" class="view">
+            <div class="card p-6">
+                <h2 class="text-2xl font-bold mb-2">1. Scan Pages</h2>
+                <p class="text-gray-600 mb-6">Use your camera to snap a picture or upload a file. Add multiple pages before extracting.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <button id="use-camera-btn" class="btn btn-secondary p-6 text-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        Use Camera (Mobile only)
+                    </button>
+                     <input type="file" id="camera-upload" class="hidden" accept="image/*" capture="environment">
+                    <button id="add-file-btn" class="btn btn-secondary p-6 text-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        Upload File
+                    </button>
+                    <input type="file" id="image-upload" class="hidden" accept="image/*" multiple>
+                </div>
+                <div id="staged-images-container" class="space-y-4"></div>
+                 <div id="extract-button-container" class="mt-6 hidden">
+                    <button id="extract-btn" class="w-full btn btn-primary text-lg">Extract Vocabulary</button>
+                 </div>
+            </div>
+        </div>
+        
+        <!-- Review View -->
+        <div id="review-view" class="view">
+             <div class="card p-6">
+                <h2 class="text-2xl font-bold mb-2">2. Review & Correct Words</h2>
+                <p class="text-gray-600 mb-6">We found these words. Uncheck any you don't want, fix errors, or add new words.</p>
+                <div id="vocab-list" class="space-y-4"></div>
+                <div class="mt-6 border-t pt-6 space-y-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="select-all" class="h-5 w-5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-500">
+                        <label for="select-all" class="ml-3 block font-medium text-gray-700">Select/Deselect All</label>
+                    </div>
+                    <button id="add-word-btn" class="btn btn-secondary w-full">Add New Word</button>
+                    <button id="go-to-organize-btn" class="w-full btn btn-primary text-lg">Add Selected Words to a Deck</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Deck View -->
+        <div id="edit-deck-view" class="view">
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                     <h2 class="text-2xl font-bold">Edit Deck</h2>
+                     <button id="back-to-home-btn" class="btn btn-secondary btn-sm">Back to Home</button>
+                </div>
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label for="edit-book-name" class="block text-sm font-medium text-gray-700">Book</label>
+                        <input type="text" id="edit-book-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-100" readonly>
+                    </div>
+                     <div>
+                        <label for="edit-chapter-name" class="block text-sm font-medium text-gray-700">Chapter Name</label>
+                        <input type="text" id="edit-chapter-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                </div>
+                <h3 class="text-lg font-bold mb-2">Words in this Chapter</h3>
+                <div id="edit-vocab-list" class="space-y-3"></div>
+                 <div class="mt-6 border-t pt-6 space-y-4">
+                    <button id="add-word-to-deck-btn" class="btn btn-secondary w-full">Add New Word to this Chapter</button>
+                    <button id="save-chapter-changes-btn" class="w-full btn btn-primary text-lg">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALS -->
+        <div id="loading-modal" class="modal-overlay"><div class="modal-content text-center"><div class="loader mx-auto"></div><p id="loading-message" class="mt-4 text-gray-600 font-medium">Please wait...</p></div></div>
+        <div id="error-modal" class="modal-overlay"><div class="modal-content text-center"><h3 class="text-xl font-bold text-red-600 mb-4">Error</h3><p id="error-message" class="text-gray-700 mb-6"></p><button id="close-error-btn" class="btn btn-secondary">Close</button></div></div>
+        <div id="organize-modal" class="modal-overlay"><div class="modal-content w-full max-w-md"><h3 class="text-xl font-bold mb-4">3. Organize Vocabulary</h3><p class="text-gray-600 mb-6">Choose where to save these <span id="word-count-span" class="font-bold"></span> words.</p><div class="space-y-4"><div><label for="book-select" class="block text-sm font-medium text-gray-700">Book</label><select id="book-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select><input type="text" id="new-book-input" placeholder="Or create a new book..." class="hidden mt-2 w-full border-gray-300 rounded-md shadow-sm"></div><div><label for="chapter-select" class="block text-sm font-medium text-gray-700">Chapter</label><select id="chapter-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select><input type="text" id="new-chapter-input" placeholder="Or create a new chapter..." class="hidden mt-2 w-full border-gray-300 rounded-md shadow-sm"></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancel-organize-btn" class="btn btn-secondary">Cancel</button><button id="save-deck-btn" class="btn btn-primary">Save to Deck</button></div></div></div>
+        <div id="quiz-modal" class="modal-overlay"><div class="modal-content w-full max-w-lg"><h2 class="text-2xl font-semibold mb-6 text-center">Quiz Time!</h2><div id="quiz-card-container" class="mb-6"></div><div class="flex justify-between items-center"><p id="card-counter" class="text-sm text-gray-500"></p><button id="next-card-btn" class="btn btn-primary">Next</button></div><button id="close-quiz-btn" class="w-full btn btn-secondary mt-4">End Quiz</button></div></div>
+        <div id="confirm-modal" class="modal-overlay"><div class="modal-content w-full max-w-md text-center"><h3 id="confirm-title" class="text-xl font-bold text-gray-800 mb-2">Are you sure?</h3><p id="confirm-message" class="text-gray-600 mb-6"></p><div class="flex justify-center space-x-4"><button id="cancel-confirm-btn" class="btn btn-secondary">Cancel</button><button id="confirm-action-btn" class="btn btn-danger">Confirm</button></div></div></div>
+        <div id="api-key-modal" class="modal-overlay"><div class="modal-content w-full max-w-md"><h3 class="text-xl font-bold mb-4">API Key Required</h3><p class="text-gray-600 mb-4">To scan vocabulary, this app requires a Google AI API key.</p><div class="space-y-1"><label for="api-key-input" class="block text-sm font-medium text-gray-700">Your Google AI API Key</label><input type="password" id="api-key-input" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Enter your API key"></div><p class="mt-2 text-sm text-gray-500">You can get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-600 hover:underline">aistudio.google.com</a>.</p><div class="mt-6 flex justify-end space-x-3"><button id="cancel-api-key-btn" class="btn btn-secondary">Cancel</button><button id="save-api-key-btn" class="btn btn-primary">Save Key</button></div></div></div>
+
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const App = {
+            // Views
+            views: document.querySelectorAll('.view'),
+            homeView: document.getElementById('home-view'),
+            scanView: document.getElementById('scan-view'),
+            reviewView: document.getElementById('review-view'),
+            editDeckView: document.getElementById('edit-deck-view'),
+            // Home View
+            homeButton: document.getElementById('home-button'),
+            settingsBtn: document.getElementById('settings-btn'),
+            goToScanBtn: document.getElementById('go-to-scan-btn'),
+            studyDecksList: document.getElementById('study-decks-list'),
+            importDecksBtn: document.getElementById('import-decks-btn'),
+            importFileInput: document.getElementById('import-file-input'),
+            exportDecksBtn: document.getElementById('export-decks-btn'),
+            // Scan View
+            addFileBtn: document.getElementById('add-file-btn'),
+            imageUpload: document.getElementById('image-upload'),
+            useCameraBtn: document.getElementById('use-camera-btn'),
+            cameraUpload: document.getElementById('camera-upload'),
+            stagedImagesContainer: document.getElementById('staged-images-container'),
+            extractBtnContainer: document.getElementById('extract-button-container'),
+            extractBtn: document.getElementById('extract-btn'),
+            // Review View
+            vocabList: document.getElementById('vocab-list'),
+            selectAllCheckbox: document.getElementById('select-all'),
+            addWordBtn: document.getElementById('add-word-btn'),
+            goToOrganizeBtn: document.getElementById('go-to-organize-btn'),
+             // Edit Deck View
+            backToHomeBtn: document.getElementById('back-to-home-btn'),
+            editBookName: document.getElementById('edit-book-name'),
+            editChapterName: document.getElementById('edit-chapter-name'),
+            editVocabList: document.getElementById('edit-vocab-list'),
+            addWordToDeckBtn: document.getElementById('add-word-to-deck-btn'),
+            saveChapterChangesBtn: document.getElementById('save-chapter-changes-btn'),
+            // API Key Modal
+            apiKeyModal: document.getElementById('api-key-modal'),
+            apiKeyInput: document.getElementById('api-key-input'),
+            saveApiKeyBtn: document.getElementById('save-api-key-btn'),
+            cancelApiKeyBtn: document.getElementById('cancel-api-key-btn'),
+        };
+
+        // --- State ---
+        let State = {
+            apiKey: null,
+            studyDecks: {},
+            stagedImages: [], 
+            extractedVocab: [],
+            selectedWordsForDeck: [],
+            editingDeck: { book: null, chapter: null, originalChapterName: null },
+            quiz: { deck: [], currentIndex: 0 },
+            pendingConfirmAction: null,
+        };
+        
+        // --- Main App Logic ---
+
+        function switchView(viewId) {
+            App.views.forEach(view => view.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function showModal(modalId, message = '') {
+            const modal = document.getElementById(modalId);
+            if(message) {
+                const msgEl = modal.querySelector('#loading-message, #error-message, #confirm-message');
+                if (msgEl) msgEl.textContent = message;
+            }
+            modal.classList.add('active');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // --- API Key Management ---
+        function loadApiKey() {
+            State.apiKey = localStorage.getItem('japaneseVocabApiKey');
+            if (State.apiKey) {
+                App.apiKeyInput.value = State.apiKey;
+            }
+        }
+        function saveApiKey() {
+            const key = App.apiKeyInput.value.trim();
+            if (key) {
+                State.apiKey = key;
+                localStorage.setItem('japaneseVocabApiKey', key);
+                hideModal('api-key-modal');
+            } else {
+                showModal('error-modal', 'API Key cannot be empty.');
+            }
+        }
+
+        // --- Data Persistence ---
+        function loadDecksFromStorage() {
+            const decksJSON = localStorage.getItem('japaneseVocabDecks');
+            if (decksJSON) {
+                State.studyDecks = JSON.parse(decksJSON);
+            }
+        }
+        
+        function saveDecksToStorage() {
+            localStorage.setItem('japaneseVocabDecks', JSON.stringify(State.studyDecks));
+        }
+
+        // --- Home View / Dashboard ---
+        function renderHomeView() {
+            App.studyDecksList.innerHTML = '';
+            const books = Object.keys(State.studyDecks).sort();
+
+            if (books.length === 0) {
+                App.studyDecksList.innerHTML = `<div class="card p-6 text-center text-gray-500">You don't have any study decks yet. Click 'Add New Words' to get started!</div>`;
+                return;
+            }
+
+            books.forEach(bookName => {
+                const book = State.studyDecks[bookName];
+                const chapters = Object.keys(book).sort();
+                let totalWords = chapters.reduce((sum, ch) => sum + book[ch].length, 0);
+                
+                const bookCard = document.createElement('div');
+                bookCard.className = 'card';
+                bookCard.innerHTML = `
+                    <div class="p-4 bg-gray-50 rounded-t-lg border-b flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xl font-bold noto-sans-jp text-gray-800">${bookName}</h3>
+                            <p class="text-sm text-gray-500">${totalWords} words in ${chapters.length} chapters</p>
+                        </div>
+                        <button class="btn btn-danger btn-sm btn-icon delete-book-btn" data-book="${bookName}" title="Delete Book">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                    <div class="p-4 space-y-2">
+                        ${chapters.map(chapterName => `
+                            <div class="flex justify-between items-center p-2 rounded-md hover:bg-gray-100">
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold noto-sans-jp truncate">${chapterName}</p>
+                                    <p class="text-sm text-gray-500">${book[chapterName].length} words</p>
+                                </div>
+                                <div class="flex items-center space-x-2 flex-shrink-0">
+                                     <button class="btn btn-secondary btn-sm edit-chapter-btn" data-book="${bookName}" data-chapter="${chapterName}">Edit</button>
+                                     <button class="btn btn-danger btn-sm btn-icon delete-chapter-btn" data-book="${bookName}" data-chapter="${chapterName}" title="Delete Chapter">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                     </button>
+                                     <button class="btn btn-primary btn-sm quiz-btn" data-book="${bookName}" data-chapter="${chapterName}">Quiz</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                App.studyDecksList.appendChild(bookCard);
+            });
+        }
+        
+        // --- Import / Export ---
+        function handleExport() {
+            if (Object.keys(State.studyDecks).length === 0) {
+                showModal('error-modal', "There are no decks to export.");
+                return;
+            }
+            const dataStr = JSON.stringify(State.studyDecks, null, 2);
+            const dataBlob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.download = `japanese_vocab_decks_${new Date().toISOString().slice(0,10)}.json`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedDecks = JSON.parse(e.target.result);
+                    if(typeof importedDecks !== 'object' || importedDecks === null) throw new Error("Invalid format");
+                    
+                    showModal('confirm-modal', 'This will merge imported decks with your current ones. Existing chapters will be updated with new words. Continue?');
+                    document.getElementById('confirm-title').textContent = "Import Decks?";
+                    document.getElementById('confirm-action-btn').textContent = "Import";
+                    
+                    State.pendingConfirmAction = () => {
+                        for (const bookName in importedDecks) {
+                            if (!State.studyDecks[bookName]) State.studyDecks[bookName] = {};
+                            for (const chapterName in importedDecks[bookName]) {
+                                if (!State.studyDecks[bookName][chapterName]) State.studyDecks[bookName][chapterName] = [];
+                                const existingChapter = State.studyDecks[bookName][chapterName];
+                                const newWords = importedDecks[bookName][chapterName];
+                                newWords.forEach(newWord => {
+                                    if (!existingChapter.some(w => w.japanese === newWord.japanese)) {
+                                        existingChapter.push(newWord);
+                                    }
+                                });
+                            }
+                        }
+                        saveDecksToStorage();
+                        renderHomeView();
+                        document.getElementById('confirm-title').textContent = "Are you sure?";
+                        document.getElementById('confirm-action-btn').textContent = "Confirm";
+                    };
+
+                } catch (err) {
+                    showModal('error-modal', `Import failed. Please make sure it's a valid JSON file. Error: ${err.message}`);
+                } finally {
+                    App.importFileInput.value = "";
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Scan/Upload Flow ---
+        async function handleImageUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            showModal('loading-modal', 'Processing images...');
+            for (const file of files) {
+                const base64 = await fileToBase64(file);
+                State.stagedImages.push({ id: Date.now() + Math.random(), base64 });
+            }
+            renderStagedImages();
+            event.target.value = '';
+            hideModal('loading-modal');
+        }
+        function fileToBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = error => reject(error); }); }
+        function renderStagedImages() { App.stagedImagesContainer.innerHTML = ''; if (State.stagedImages.length > 0) { const header = document.createElement('h3'); header.className = 'text-lg font-semibold text-gray-700'; header.textContent = `Pages to Scan (${State.stagedImages.length})`; App.stagedImagesContainer.appendChild(header); } State.stagedImages.forEach(img => { const div = document.createElement('div'); div.className = 'flex items-center justify-between p-2 border rounded-lg'; div.innerHTML = `<img src="data:image/jpeg;base64,${img.base64}" class="h-16 w-16 object-cover rounded-md"><span class="text-sm text-gray-500">Page added...</span><button class="btn btn-danger btn-sm btn-icon remove-staged-img-btn" data-id="${img.id}" title="Remove Page">&times;</button>`; App.stagedImagesContainer.appendChild(div); }); App.extractBtnContainer.classList.toggle('hidden', State.stagedImages.length === 0); }
+        function removeStagedImage(id) { State.stagedImages = State.stagedImages.filter(img => img.id != id); renderStagedImages(); }
+        
+        async function handleExtract() {
+            if (!State.apiKey) {
+                showModal('api-key-modal');
+                return;
+            }
+            if (State.stagedImages.length === 0) return;
+            showModal('loading-modal', `Analyzing ${State.stagedImages.length} page(s)...`);
+            let allVocab = [];
+            try {
+                for (let i = 0; i < State.stagedImages.length; i++) {
+                    showModal('loading-modal', `Analyzing page ${i + 1} of ${State.stagedImages.length}...`);
+                    const result = await callGeminiAPI(State.stagedImages[i].base64, State.apiKey);
+                    allVocab = allVocab.concat(result);
+                }
+                State.extractedVocab = allVocab.map((item, index) => ({ ...item, id: `temp-${index}` }));
+                renderReviewView();
+                switchView('review-view');
+            } catch (error) {
+                console.error("Extraction error:", error);
+                showModal('error-modal', `Extraction failed: ${error.message}. Check your API key and try a clearer image.`);
+            } finally {
+                hideModal('loading-modal');
+            }
+        }
+
+        async function callGeminiAPI(base64ImageData, apiKey) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const prompt = `You are an automated OCR system. Your ONLY task is to analyze the provided image of a vocabulary list and return a valid, minified JSON array of objects.
+- Each object MUST have exactly two keys: "japanese" and "english".
+- The "japanese" value MUST be the full Japanese term.
+- The "english" value MUST be the corresponding English translation.
+- Your entire response MUST be ONLY the JSON data.
+- DO NOT include any explanatory text, markdown like \`\`\`json, or any characters before the opening bracket '[' or after the closing bracket ']'.
+- If the image is unclear or contains no vocabulary, return an empty array: [].
+Example of a valid response: [{"japanese":"まち 町","english":"town / 城市 / thị trấn"},{"japanese":"えいがかん","english":"movie theater / 電影院 / rạp chiếu phim"}]`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`API call failed: ${response.statusText}`);
+            const result = await response.json();
+
+            if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0].text) {
+                let rawText = result.candidates[0].content.parts[0].text;
+                try {
+                    return JSON.parse(rawText);
+                } catch (e) {
+                    console.warn("Initial JSON.parse failed. Attempting to clean the string...", e);
+                    const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/);
+                    if (jsonMatch && jsonMatch[1]) rawText = jsonMatch[1];
+                    else { const firstBracket = rawText.indexOf('['); const lastBracket = rawText.lastIndexOf(']'); if (firstBracket !== -1 && lastBracket !== -1) { rawText = rawText.substring(firstBracket, lastBracket + 1); } }
+                    try { return JSON.parse(rawText); } 
+                    catch (finalError) { console.error("Could not parse JSON even after cleaning:", finalError); throw new Error("The AI returned data in an unexpected format."); }
+                }
+            }
+            throw new Error((result.candidates && result.candidates[0] && result.candidates[0].finishReason) || "Could not extract text from image.");
+        }
+        
+        // --- Review View ---
+        function renderReviewView() {
+            App.vocabList.innerHTML = '';
+            State.extractedVocab.forEach(item => App.vocabList.appendChild(createEditableWordRow(item, 'review')));
+            App.selectAllCheckbox.checked = true;
+        }
+        
+        function createEditableWordRow(item, context) {
+            const div = document.createElement('div');
+            div.className = 'flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200 space-x-4';
+            div.dataset.id = item.id;
+            const isChecked = context === 'review' ? 'checked' : '';
+            const checkboxHTML = context === 'review' ? `<input type="checkbox" value="${item.id}" class="mt-2 h-5 w-5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-500 vocab-checkbox" ${isChecked}>` : '';
+            div.innerHTML = `<div class="flex-1">${checkboxHTML}<input type="text" value="${item.japanese}" placeholder="Japanese Word" class="w-full font-bold text-lg noto-sans-jp text-indigo-800 bg-transparent border-b-2 border-transparent focus:outline-none focus:border-indigo-500 editable-field" data-field="japanese"><input type="text" value="${item.english}" placeholder="English Meaning" class="w-full text-gray-600 bg-transparent border-b-2 border-transparent focus:outline-none focus:border-indigo-500 editable-field" data-field="english"></div><button class="btn btn-danger btn-sm btn-icon remove-word-btn" title="Remove Word">&times;</button>`;
+            return div;
+        }
+
+        function handleAddWord(context) {
+            const newWord = { id: `temp-${Date.now()}`, japanese: '', english: ''};
+            if (context === 'review') {
+                State.extractedVocab.push(newWord);
+                const newRow = createEditableWordRow(newWord, 'review');
+                App.vocabList.appendChild(newRow);
+                newRow.querySelector('.vocab-checkbox').checked = true;
+            } else if (context === 'edit') App.editVocabList.appendChild(createEditableWordRow(newWord, 'edit'));
+        }
+        
+        function handleRemoveWord(event, context) {
+            const row = event.target.closest('[data-id]');
+            if (!row) return;
+            const wordId = row.dataset.id;
+            row.remove();
+            if (context === 'review') State.extractedVocab = State.extractedVocab.filter(w => w.id !== wordId);
+        }
+        
+        // --- Edit Deck View ---
+        function openEditDeckView(bookName, chapterName) {
+            State.editingDeck.book = bookName;
+            State.editingDeck.chapter = chapterName;
+            State.editingDeck.originalChapterName = chapterName;
+            App.editBookName.value = bookName;
+            App.editChapterName.value = chapterName;
+            App.editVocabList.innerHTML = '';
+            const words = State.studyDecks[bookName][chapterName];
+            words.forEach((word, index) => {
+                const wordWithId = { ...word, id: `deck-${index}`};
+                App.editVocabList.appendChild(createEditableWordRow(wordWithId, 'edit'));
+            });
+            switchView('edit-deck-view');
+        }
+
+        function handleSaveChapterChanges() {
+            const { book, originalChapterName } = State.editingDeck;
+            const newChapterName = App.editChapterName.value.trim();
+            if (!newChapterName) { showModal('error-modal', 'Chapter name cannot be empty.'); return; }
+            const updatedWords = [];
+            const rows = App.editVocabList.querySelectorAll('[data-id]');
+            rows.forEach(row => {
+                const japanese = row.querySelector('[data-field="japanese"]').value.trim();
+                const english = row.querySelector('[data-field="english"]').value.trim();
+                if(japanese && english) updatedWords.push({ japanese, english });
+            });
+            if (newChapterName !== originalChapterName) delete State.studyDecks[book][originalChapterName];
+            State.studyDecks[book][newChapterName] = updatedWords;
+            saveDecksToStorage();
+            resetAppToHome();
+        }
+
+        // --- Organize & Save Flow ---
+        function openOrganizeModal() {
+            const selectedCheckboxes = Array.from(document.getElementById('vocab-list').querySelectorAll('.vocab-checkbox:checked'));
+            const selectedWordIds = selectedCheckboxes.map(cb => cb.value);
+            const wordsToOrganize = [];
+            const allRows = document.getElementById('vocab-list').querySelectorAll('[data-id]');
+            allRows.forEach(row => {
+                if (selectedWordIds.includes(row.dataset.id)) {
+                    const japanese = row.querySelector('[data-field="japanese"]').value.trim();
+                    const english = row.querySelector('[data-field="english"]').value.trim();
+                    if(japanese && english) wordsToOrganize.push({ japanese, english });
+                }
+            });
+            State.selectedWordsForDeck = wordsToOrganize;
+            
+            if (State.selectedWordsForDeck.length === 0) { showModal('error-modal', 'Please select at least one word with both Japanese and English fields filled out.'); return; }
+            
+            document.getElementById('word-count-span').textContent = State.selectedWordsForDeck.length;
+            const bookSelect = document.getElementById('book-select');
+            const books = Object.keys(State.studyDecks);
+            bookSelect.innerHTML = '<option value="">-- Select an existing book --</option>';
+            books.forEach(book => bookSelect.innerHTML += `<option value="${book}">${book}</option>`);
+            bookSelect.innerHTML += '<option value="__new__">** Create a new book **</option>';
+            document.getElementById('new-book-input').value = '';
+            document.getElementById('new-book-input').classList.add('hidden');
+            document.getElementById('chapter-select').innerHTML = '';
+            document.getElementById('chapter-select').classList.add('hidden');
+            document.getElementById('new-chapter-input').value = '';
+            document.getElementById('new-chapter-input').classList.add('hidden');
+            showModal('organize-modal');
+        }
+
+        function populateChapterSelect(bookName) {
+            const chapterSelect = document.getElementById('chapter-select');
+            const newChapterInput = document.getElementById('new-chapter-input');
+            const newBookInput = document.getElementById('new-book-input');
+            chapterSelect.innerHTML = '';
+            newChapterInput.classList.add('hidden');
+            newChapterInput.value = '';
+            chapterSelect.classList.add('hidden');
+            newBookInput.classList.toggle('hidden', bookName !== '__new__');
+            if (bookName === '__new__') newChapterInput.classList.remove('hidden');
+            else if (bookName && State.studyDecks[bookName]) {
+                const chapters = Object.keys(State.studyDecks[bookName]);
+                chapterSelect.innerHTML = '<option value="">-- Select an existing chapter --</option>';
+                chapters.forEach(ch => chapterSelect.innerHTML += `<option value="${ch}">${ch}</option>`);
+                chapterSelect.innerHTML += '<option value="__new__">** Create a new chapter **</option>';
+                chapterSelect.classList.remove('hidden');
+            }
+        }
+        
+        function handleSaveToDeck() {
+            const bookSelect = document.getElementById('book-select');
+            const newBookInput = document.getElementById('new-book-input');
+            const chapterSelect = document.getElementById('chapter-select');
+            const newChapterInput = document.getElementById('new-chapter-input');
+            const isNewBook = bookSelect.value === '__new__';
+            const bookName = isNewBook ? newBookInput.value.trim() : bookSelect.value;
+            let chapterName;
+            if (isNewBook) chapterName = newChapterInput.value.trim();
+            else { const isNewChapter = chapterSelect.value === '__new__'; chapterName = isNewChapter ? newChapterInput.value.trim() : chapterSelect.value; }
+            if (!bookName || !chapterName) { showModal('error-modal', 'Please specify both a book and a chapter name.'); return; }
+            if (!State.studyDecks[bookName]) State.studyDecks[bookName] = {};
+            if (!State.studyDecks[bookName][chapterName]) State.studyDecks[bookName][chapterName] = [];
+            const chapterDeck = State.studyDecks[bookName][chapterName];
+            State.selectedWordsForDeck.forEach(newWord => {
+                if (newWord.japanese && newWord.english && !chapterDeck.some(existing => existing.japanese === newWord.japanese)) {
+                    chapterDeck.push({ japanese: newWord.japanese, english: newWord.english });
+                }
+            });
+            saveDecksToStorage();
+            resetAppToHome();
+            hideModal('organize-modal');
+        }
+
+        // --- Delete Actions ---
+        function showDeleteConfirm(type, bookName, chapterName = null) {
+            const confirmBtn = document.getElementById('confirm-action-btn');
+            confirmBtn.textContent = "Delete";
+            confirmBtn.classList.remove('btn-primary');
+            confirmBtn.classList.add('btn-danger');
+
+            if (type === 'book') {
+                showModal('confirm-modal', `Are you sure you want to delete the entire book "${bookName}" and all its chapters? This cannot be undone.`);
+                document.getElementById('confirm-title').textContent = "Delete Book?";
+                State.pendingConfirmAction = () => { delete State.studyDecks[bookName]; saveDecksToStorage(); renderHomeView(); };
+            } else if (type === 'chapter') {
+                showModal('confirm-modal', `Are you sure you want to delete the chapter "${chapterName}" from the book "${bookName}"?`);
+                document.getElementById('confirm-title').textContent = "Delete Chapter?";
+                State.pendingConfirmAction = () => { delete State.studyDecks[bookName][chapterName]; if(Object.keys(State.studyDecks[bookName]).length === 0) delete State.studyDecks[bookName]; saveDecksToStorage(); renderHomeView(); };
+            }
+        }
+
+        // --- Quiz Flow ---
+        function startQuiz(bookName, chapterName) {
+            let words = [];
+            if (chapterName) { words = State.studyDecks[bookName] && State.studyDecks[bookName][chapterName] ? State.studyDecks[bookName][chapterName] : []; }
+            else { const book = State.studyDecks[bookName]; if (book) { Object.values(book).forEach(chapterWords => { words = words.concat(chapterWords); }); } }
+            if(words.length === 0) { showModal('error-modal', 'There are no words in this deck to quiz!'); return; }
+            State.quiz.deck = [...words].sort(() => Math.random() - 0.5);
+            State.quiz.currentIndex = 0;
+            renderQuizCard();
+            showModal('quiz-modal');
+        }
+        function renderQuizCard() {
+            const item = State.quiz.deck[State.quiz.currentIndex];
+            const quizCardContainer = document.getElementById('quiz-card-container');
+            quizCardContainer.innerHTML = `<div class="flashcard-container"><div class="flashcard"><div class="flashcard-face flashcard-front"><p class="text-3xl md:text-4xl font-bold noto-sans-jp text-center">${item.japanese}</p></div><div class="flashcard-face flashcard-back"><p class="text-xl md:text-2xl font-medium text-center">${item.english}</p></div></div></div><p class="text-center text-sm text-gray-500 mt-3">Click card to flip</p>`;
+            quizCardContainer.querySelector('.flashcard').addEventListener('click', e => e.currentTarget.classList.toggle('is-flipped'));
+            document.getElementById('card-counter').textContent = `Card ${State.quiz.currentIndex + 1} of ${State.quiz.deck.length}`;
+        }
+        function nextQuizCard() { State.quiz.currentIndex = (State.quiz.currentIndex + 1) % State.quiz.deck.length; renderQuizCard(); }
+
+
+        // --- App Reset & Cleanup ---
+        function resetAppToHome() {
+            State.stagedImages = [];
+            State.extractedVocab = [];
+            State.selectedWordsForDeck = [];
+            renderStagedImages();
+            App.vocabList.innerHTML = '';
+            loadDecksFromStorage();
+            renderHomeView();
+            switchView('home-view');
+        }
+
+        // --- Event Delegation & Listeners ---
+        App.homeButton.addEventListener('click', resetAppToHome);
+        App.settingsBtn.addEventListener('click', () => showModal('api-key-modal'));
+        App.goToScanBtn.addEventListener('click', () => switchView('scan-view'));
+        App.exportDecksBtn.addEventListener('click', handleExport);
+        App.importDecksBtn.addEventListener('click', () => App.importFileInput.click());
+        App.importFileInput.addEventListener('change', handleImport);
+        App.studyDecksList.addEventListener('click', (e) => {
+             const quizBtn = e.target.closest('.quiz-btn');
+             if (quizBtn) { startQuiz(quizBtn.dataset.book, quizBtn.dataset.chapter); return; }
+             const editBtn = e.target.closest('.edit-chapter-btn');
+             if (editBtn) { openEditDeckView(editBtn.dataset.book, editBtn.dataset.chapter); return; }
+             const deleteBookBtn = e.target.closest('.delete-book-btn');
+             if (deleteBookBtn) { showDeleteConfirm('book', deleteBookBtn.dataset.book); return; }
+             const deleteChapterBtn = e.target.closest('.delete-chapter-btn');
+             if (deleteChapterBtn) { showDeleteConfirm('chapter', deleteChapterBtn.dataset.book, deleteChapterBtn.dataset.chapter); return; }
+        });
+        
+        App.addFileBtn.addEventListener('click', () => App.imageUpload.click());
+        App.imageUpload.addEventListener('change', handleImageUpload);
+        App.useCameraBtn.addEventListener('click', () => App.cameraUpload.click());
+        App.cameraUpload.addEventListener('change', handleImageUpload);
+        App.extractBtn.addEventListener('click', handleExtract);
+        App.stagedImagesContainer.addEventListener('click', e => { if (e.target.closest('.remove-staged-img-btn')) { removeStagedImage(e.target.closest('.remove-staged-img-btn').dataset.id); } });
+        
+        App.addWordBtn.addEventListener('click', () => handleAddWord('review'));
+        App.vocabList.addEventListener('click', e => { if (e.target.closest('.remove-word-btn')) { handleRemoveWord(e, 'review'); } });
+        App.selectAllCheckbox.addEventListener('change', (e) => { App.vocabList.querySelectorAll('.vocab-checkbox').forEach(cb => cb.checked = e.target.checked); });
+        App.goToOrganizeBtn.addEventListener('click', openOrganizeModal);
+        
+        App.backToHomeBtn.addEventListener('click', resetAppToHome);
+        App.addWordToDeckBtn.addEventListener('click', () => handleAddWord('edit'));
+        App.editVocabList.addEventListener('click', e => { if (e.target.closest('.remove-word-btn')) { e.target.closest('[data-id]').remove(); } });
+        App.saveChapterChangesBtn.addEventListener('click', handleSaveChapterChanges);
+        
+        document.getElementById('close-error-btn').addEventListener('click', () => hideModal('error-modal'));
+        document.getElementById('cancel-organize-btn').addEventListener('click', () => hideModal('organize-modal'));
+        document.getElementById('save-deck-btn').addEventListener('click', handleSaveToDeck);
+        document.getElementById('confirm-action-btn').addEventListener('click', () => { if (State.pendingConfirmAction) State.pendingConfirmAction(); State.pendingConfirmAction = null; hideModal('confirm-modal'); });
+        document.getElementById('cancel-confirm-btn').addEventListener('click', () => { State.pendingConfirmAction = null; hideModal('confirm-modal'); });
+        document.getElementById('close-quiz-btn').addEventListener('click', () => hideModal('quiz-modal'));
+        document.getElementById('next-card-btn').addEventListener('click', nextQuizCard);
+        
+        App.saveApiKeyBtn.addEventListener('click', saveApiKey);
+        App.cancelApiKeyBtn.addEventListener('click', () => hideModal('api-key-modal'));
+
+        document.getElementById('book-select').addEventListener('change', e => {
+            populateChapterSelect(e.target.value);
+        });
+        
+        document.getElementById('chapter-select').addEventListener('change', e => { 
+            document.getElementById('new-chapter-input').classList.toggle('hidden', e.target.value !== '__new__'); 
+        });
+
+        // --- INITIALIZE ---
+        loadApiKey();
+        resetAppToHome();
+    });
+    </script>
+</body>
+</html>
