@@ -468,11 +468,12 @@
             const prompt = `You are an automated OCR system. Your ONLY task is to analyze the provided image of a vocabulary list and return a valid, minified JSON array of objects.
 - Each object MUST have exactly two keys: "japanese" and "english".
 - The "japanese" value MUST be the full Japanese term.
-- The "english" value MUST be the corresponding English translation.
+- The "english" value MUST be the corresponding English translation. 
+- The page will usually have 2 or 3 columns, the first column is usually the "japanese" value, and the last column is usually the "english" value. 
 - Your entire response MUST be ONLY the JSON data.
 - DO NOT include any explanatory text, markdown like \`\`\`json, or any characters before the opening bracket '[' or after the closing bracket ']'.
 - If the image is unclear or contains no vocabulary, return an empty array: [].
-Example of a valid response: [{"japanese":"まち 町","english":"town / 城市 / thị trấn"},{"japanese":"えいがかん","english":"movie theater / 電影院 / rạp chiếu phim"}]`;
+Example of a valid response: [{"japanese":"まち 町","english":"town / 城市"},{"japanese":"えいがかん","english":"movie theater / 電影院"}]`;
 
             const payload = {
                 contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }] }],
